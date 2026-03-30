@@ -18,7 +18,12 @@ def inject_custom_css() -> None:
     st.markdown(
         """
         <style>
-        /* Full-app dark gradient (atmosphere) */
+        /* Streamlit 1.32+ maps theme to these; force high contrast so headings/body never go dark-on-dark */
+        :root, .stApp, [data-testid="stAppViewContainer"] {
+            --st-text-color: #f8fafc !important;
+            --st-heading-color: #ffffff !important;
+        }
+        /* Full-app dark gradient (atmosphere only — main text sits on solid panel below) */
         .stApp,
         [data-testid="stAppViewContainer"] {
             background: linear-gradient(
@@ -30,38 +35,47 @@ def inject_custom_css() -> None:
                 #0f172a 100%
             ) !important;
             background-attachment: fixed !important;
+            color: #f8fafc !important;
         }
-        /* Main column: frosted panel so ALL text reads clearly on top of gradient */
+        /* Main column: nearly solid slate (readable text beats heavy frosted gradient bleed) */
         .main .block-container {
             padding-top: 1.75rem;
             padding-bottom: 3rem;
             padding-left: 2rem !important;
             padding-right: 2rem !important;
             max-width: 1180px;
-            background: rgba(15, 23, 42, 0.92) !important;
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
-            border: 1px solid rgba(125, 211, 252, 0.18);
+            background: #0f172a !important;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+            border: 1px solid rgba(125, 211, 252, 0.22);
             border-radius: 18px;
             box-shadow:
                 0 4px 24px rgba(0, 0, 0, 0.45),
                 inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            color: #f8fafc !important;
         }
-        /* Title: solid light text; Streamlit theme can otherwise paint headers too dark */
-        h1,
+        /* Headings: .stHeading is what Streamlit uses for st.title / st.subheader (high specificity) */
+        .stHeading h1, .stHeading h2, .stHeading h3, .stHeading h4,
+        h1, h2, h3, h4,
         [data-testid="stHeader"] h1,
         [data-testid="stHeadingWithActionElements"] h1,
+        [data-testid="stHeading"] h1,
+        [data-testid="stHeading"] h2,
+        [data-testid="stHeading"] h3,
         [data-testid="stMarkdownContainer"] h1 {
             font-weight: 800 !important;
             letter-spacing: -0.02em;
-            color: #f8fafc !important;
-            -webkit-text-fill-color: #f8fafc !important;
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
             background: none !important;
             background-image: none !important;
-            text-shadow:
-                0 0 24px rgba(15, 23, 42, 1),
-                0 1px 0 rgba(0, 0, 0, 0.8),
-                0 2px 8px rgba(0, 0, 0, 0.6);
+            background-clip: border-box !important;
+            -webkit-background-clip: border-box !important;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85) !important;
+        }
+        .stHeading h2, .stHeading h3, .stHeading h4,
+        h2, h3, h4 {
+            font-weight: 600 !important;
         }
         /* Gradient accent bar under title (pretty + no readability issue) */
         h1::after {
@@ -74,29 +88,37 @@ def inject_custom_css() -> None:
             background: linear-gradient(90deg, #22d3ee, #818cf8, #c084fc);
             box-shadow: 0 0 16px rgba(34, 211, 238, 0.35);
         }
-        h2, h3 {
-            color: #ffffff !important;
-            font-weight: 600 !important;
-            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-        }
         h5, h6 {
-            color: #e2e8f0 !important;
+            color: #f1f5f9 !important;
             text-transform: uppercase;
             letter-spacing: 0.07em;
             font-size: 0.74rem !important;
             font-weight: 700 !important;
         }
-        /* Body copy: maximum readability */
+        /* Body copy + anything Streamlit renders in the main column */
+        section[data-testid="stMain"],
+        section[data-testid="stMain"] .stMarkdown {
+            color: #f8fafc !important;
+        }
+        section[data-testid="stMain"] [data-baseweb="typo"],
+        .main [data-baseweb="typo"] {
+            color: #f8fafc !important;
+        }
         .main [data-testid="stMarkdownContainer"] p,
         .main [data-testid="stMarkdownContainer"] li,
-        .main [data-testid="stMarkdownContainer"] span {
-            color: #f1f5f9 !important;
+        .main [data-testid="stMarkdownContainer"] span,
+        section[data-testid="stMain"] p,
+        section[data-testid="stMain"] li {
+            color: #f8fafc !important;
             line-height: 1.65 !important;
         }
-        .main [data-testid="stMarkdownContainer"] strong {
+        .main [data-testid="stMarkdownContainer"] strong,
+        section[data-testid="stMain"] strong {
             color: #ffffff !important;
+            font-weight: 700 !important;
         }
-        .main [data-testid="stMarkdownContainer"] a {
+        .main [data-testid="stMarkdownContainer"] a,
+        section[data-testid="stMain"] a {
             color: #7dd3fc !important;
             font-weight: 500;
         }
@@ -116,8 +138,15 @@ def inject_custom_css() -> None:
         [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
         [data-testid="stSidebar"] label,
         [data-testid="stSidebar"] .stMarkdown,
-        [data-testid="stSidebar"] [data-testid="stCaptionContainer"] {
-            color: #f1f5f9 !important;
+        [data-testid="stSidebar"] [data-testid="stCaptionContainer"],
+        [data-testid="stSidebar"] [data-baseweb="typo"] {
+            color: #f8fafc !important;
+        }
+        [data-testid="stSidebar"] .stHeading h1,
+        [data-testid="stSidebar"] .stHeading h2,
+        [data-testid="stSidebar"] .stHeading h3 {
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
         }
         [data-testid="stSidebar"] .st-emotion-cache {
             color: inherit;
@@ -171,13 +200,13 @@ def inject_custom_css() -> None:
         div[data-testid="stSuccess"] span {
             color: #f0fdf4 !important;
         }
-        /* Tabs */
+        /* Tabs — inactive tabs were too dim on dark */
         button[data-baseweb="tab"] {
             font-weight: 600 !important;
-            color: #cbd5e1 !important;
+            color: #e2e8f0 !important;
         }
         button[data-baseweb="tab"][aria-selected="true"] {
-            color: #38bdf8 !important;
+            color: #ffffff !important;
         }
         /* Metrics */
         div[data-testid="metric-container"] {
@@ -208,10 +237,12 @@ def inject_custom_css() -> None:
         hr {
             border-color: rgba(148, 163, 184, 0.25) !important;
         }
-        /* Captions: brighter than before so they read on gradient edges */
         .main [data-testid="stCaptionContainer"],
         [data-testid="stCaptionContainer"] {
-            color: #e2e8f0 !important;
+            color: #f1f5f9 !important;
+        }
+        [data-testid="stCaptionContainer"] * {
+            color: inherit !important;
         }
         pre, .stCodeBlock, [data-testid="stCode"] {
             background-color: #0f172a !important;
@@ -242,8 +273,8 @@ def polish_fig(
         template="plotly_dark",
         font=dict(
             family="'Segoe UI', Inter, system-ui, sans-serif",
-            size=13,
-            color="#f1f5f9",
+            size=14,
+            color="#f8fafc",
         ),
         title=dict(text=""),
         margin=dict(l=12, r=12, t=28, b=12),
@@ -260,18 +291,18 @@ def polish_fig(
             title_font_color="#f8fafc",
         ),
         xaxis=dict(
-            title=dict(font=dict(color="#e2e8f0")),
+            title=dict(font=dict(color="#f8fafc", size=13)),
             showgrid=True,
-            gridcolor="rgba(148, 163, 184, 0.2)",
+            gridcolor="rgba(148, 163, 184, 0.25)",
             zeroline=False,
-            tickfont=dict(color="#e2e8f0"),
+            tickfont=dict(color="#f1f5f9", size=12),
         ),
         yaxis=dict(
-            title=dict(font=dict(color="#e2e8f0")),
+            title=dict(font=dict(color="#f8fafc", size=13)),
             showgrid=True,
-            gridcolor="rgba(148, 163, 184, 0.2)",
+            gridcolor="rgba(148, 163, 184, 0.25)",
             zeroline=False,
-            tickfont=dict(color="#e2e8f0"),
+            tickfont=dict(color="#f1f5f9", size=12),
         ),
     )
     if x_title:
