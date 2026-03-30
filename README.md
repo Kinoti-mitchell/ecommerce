@@ -37,6 +37,10 @@ On the **first visit**, the app runs the batch pipeline to create `data/`, `mode
 | `models/` | Saved models (generated) |
 | `streamlit_app.py` | Dashboard |
 
+## Presentation
+
+Slide-style outline, architecture diagram (Mermaid), and speaker notes: **[docs/PRESENTATION.md](docs/PRESENTATION.md)**.
+
 ## Create a GitHub repository
 
 1. On GitHub: **New repository** → choose a name → create **without** README (this folder already has one).
