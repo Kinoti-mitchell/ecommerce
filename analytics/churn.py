@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import joblib
 import pandas as pd
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.metrics import accuracy_score, classification_report, roc_auc_score
 from sklearn.model_selection import train_test_split
 
-ROOT = Path(__file__).resolve().parent.parent
-MODEL_DIR = ROOT / "models"
+import config
+
+MODEL_DIR = config.MODELS_DIR
 
 
 def train_churn_model(df: pd.DataFrame) -> dict:

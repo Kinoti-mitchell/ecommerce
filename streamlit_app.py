@@ -21,6 +21,8 @@ ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+import config
+
 from analytics.fraud import engineer_fraud_features, load_fraud_artifacts
 from analytics.recommendations import recommend_for_user
 from dashboard.loaders import (
@@ -39,7 +41,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-_METRICS_PATH = ROOT / "output" / "metrics.json"
+_METRICS_PATH = config.OUTPUT_DIR / "metrics.json"
 
 
 def _run_batch_pipeline_if_needed() -> None:
@@ -52,7 +54,8 @@ def _run_batch_pipeline_if_needed() -> None:
     )
     st.info(
         "**First load:** generating the synthetic data lake, training models, and writing "
-        "`output/metrics.json`. This can take **2–8 minutes** on free hosting—please wait."
+        "`output/metrics.json`. This can take **2–8 minutes** on free hosting—please wait. "
+        "Tip: set secrets env **`STREAMLIT_QUICK=1`** for smaller data and faster cold starts."
     )
     with st.status("Running batch pipeline (`main.py`)…", expanded=True) as status:
         try:
@@ -97,6 +100,8 @@ fraud_sample_n = st.sidebar.slider("Fraud chart sample (rows)", 1000, 15000, 600
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("Metrics snapshot")
+if metrics.get("pipeline_mode"):
+    st.sidebar.caption(f"Pipeline mode: **{metrics['pipeline_mode']}**")
 st.sidebar.metric("Fraud ROC‑AUC (full pipeline)", f"{metrics['fraud_model_clean']['roc_auc']:.3f}")
 st.sidebar.metric("Fraud ROC‑AUC (amount‑only baseline)", f"{metrics['fraud_model_dirty_baseline']['roc_auc']:.3f}")
 st.sidebar.metric("Churn ROC‑AUC", f"{metrics['churn']['roc_auc']:.3f}")

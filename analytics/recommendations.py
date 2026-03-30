@@ -7,15 +7,14 @@ with dense user-item matrices for medium-sized catalogs.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import joblib
 import numpy as np
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 
-ROOT = Path(__file__).resolve().parent.parent
-MODEL_DIR = ROOT / "models"
+import config
+
+MODEL_DIR = config.MODELS_DIR
 
 
 def build_user_item_matrix(df: pd.DataFrame) -> tuple[np.ndarray, list[int], list[int]]:

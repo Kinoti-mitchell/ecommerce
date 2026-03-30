@@ -12,21 +12,29 @@ streamlit run streamlit_app.py
 
 - **Windows:** use `py -3` instead of `python` if needed.
 - **PySpark batch job:** set `USE_PYSPARK=1` (requires Java). Default uses pandas chunked aggregation.
+- **Faster / smaller run (e.g. Streamlit Cloud):** set **`STREAMLIT_QUICK=1`** or **`QUICK_MODE=1`** — uses smaller synthetic datasets and lighter steps (see `config.py`).
 
 ## Streamlit Community Cloud
 
 Deploy with main file **`streamlit_app.py`** and **`requirements.txt`**.
 
-On the **first visit**, the app runs the full **`main.py`** pipeline to create `data/`, `models/`, and `output/metrics.json` (nothing is committed for those paths). **First load can take several minutes**; free tiers may time out on very heavy runs. If deploy fails, run `python main.py` locally and temporarily commit `output/` + `models/` + `data/` (remove those lines from `.gitignore`) for a smaller static demo.
+On the **first visit**, the app runs the batch pipeline to create `data/`, `models/`, and `output/metrics.json`. Add a secret **`STREAMLIT_QUICK=true`** for smaller data and faster cold starts. **First load can still take a few minutes** on free tiers.
 
 ## Layout
 
 | Path | Purpose |
 |------|---------|
-| `data/` | Simulated HDFS-style datasets (created by `main.py`) |
-| `output/` | Metrics, scored tables, streaming demos |
-| `models/` | Saved models (created by `main.py`) |
-| `main.py` | Full batch pipeline |
+| `config.py` | Paths, `DataLakeSpec`, quick/full mode (`STREAMLIT_QUICK` / `QUICK_MODE`) |
+| `pipeline/runner.py` | Orchestrates all batch steps (`run_full_pipeline`) |
+| `project_summary.py` | Long-form “Big Data” learner summary text |
+| `main.py` | CLI entrypoint (`python main.py`) |
+| `analytics/` | Fraud, sentiment, basket, churn, recommendations |
+| `utils/` | Synthetic data, cleaning, MapReduce sim, streaming helpers |
+| `spark_jobs/` | Optional PySpark + pandas chunked aggregation |
+| `dashboard/` | Streamlit data loaders |
+| `data/` | Simulated data lake (generated) |
+| `output/` | Metrics and scored tables (generated) |
+| `models/` | Saved models (generated) |
 | `streamlit_app.py` | Dashboard |
 
 ## Create a GitHub repository

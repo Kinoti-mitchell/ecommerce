@@ -9,8 +9,6 @@ Features engineered to mirror common rules + model-based scoring:
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import joblib
 import numpy as np
 import pandas as pd
@@ -18,8 +16,9 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report, roc_auc_score
 from sklearn.model_selection import train_test_split
 
-ROOT = Path(__file__).resolve().parent.parent
-MODEL_DIR = ROOT / "models"
+import config
+
+MODEL_DIR = config.MODELS_DIR
 
 
 def engineer_fraud_features(df: pd.DataFrame) -> pd.DataFrame:

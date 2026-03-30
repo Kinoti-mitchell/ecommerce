@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parent.parent
-OUTPUT = ROOT / "output"
-DATA = ROOT / "data"
+import config
+
+OUTPUT = config.OUTPUT_DIR
+DATA = config.DATA_DIR
 
 
 def load_metrics() -> dict:

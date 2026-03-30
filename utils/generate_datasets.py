@@ -10,15 +10,13 @@ In production Hadoop:
 from __future__ import annotations
 
 import json
-import os
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-# Project root: parent of utils/
-ROOT = Path(__file__).resolve().parent.parent
-DATA_LAKE = ROOT / "data"
+import config
+
+DATA_LAKE = config.DATA_DIR
 
 
 def _ensure_lake() -> Path:
@@ -206,33 +204,38 @@ def generate_ratings_purchases(n_interactions: int = 40_000, seed: int = 46) -> 
     return df
 
 
-def write_data_lake() -> dict[str, str]:
+def write_data_lake(spec=None) -> dict[str, str]:
     """
     Persist datasets to the local data lake folder.
     Treat this directory as a stand-in for HDFS paths like /lake/ecomm/transactions/.
+
+    If ``spec`` is None, sizes come from ``config.data_lake_spec()`` (honours QUICK_MODE).
     """
+    if spec is None:
+        spec = config.data_lake_spec()
+
     lake = _ensure_lake()
     paths = {}
 
-    tx = generate_transactions()
+    tx = generate_transactions(n_rows=spec.n_transactions)
     tx_path = lake / "transactions.csv"
     tx.to_csv(tx_path, index=False)
     paths["transactions_csv"] = str(tx_path)
 
-    rev = generate_reviews()
+    rev = generate_reviews(n_rows=spec.n_reviews)
     rev_path = lake / "reviews.json"
     rev.to_json(rev_path, orient="records", lines=True)
     paths["reviews_jsonl"] = str(rev_path)
 
-    basket = generate_basket_orders()
+    basket = generate_basket_orders(n_orders=spec.n_basket_orders)
     basket.to_csv(lake / "order_line_items.csv", index=False)
     paths["baskets_csv"] = str(lake / "order_line_items.csv")
 
-    churn = generate_churn_users()
+    churn = generate_churn_users(n_rows=spec.n_churn_users)
     churn.to_csv(lake / "user_churn_features.csv", index=False)
     paths["churn_csv"] = str(lake / "user_churn_features.csv")
 
-    ratings = generate_ratings_purchases()
+    ratings = generate_ratings_purchases(n_interactions=spec.n_rating_interactions)
     ratings.to_csv(lake / "user_product_ratings.csv", index=False)
     paths["ratings_csv"] = str(lake / "user_product_ratings.csv")
 

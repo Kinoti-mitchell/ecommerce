@@ -20,14 +20,14 @@ import json
 import os
 from pathlib import Path
 
+import config as project_config
 import pandas as pd
 
 # PySpark starts a local JVM; on some Windows setups that can block or require Java.
 # Set USE_PYSPARK=1 to force the Spark code path when Java + Spark are configured.
 USE_PYSPARK = os.environ.get("USE_PYSPARK", "").lower() in ("1", "true", "yes")
 
-ROOT = Path(__file__).resolve().parent.parent
-DATA_LAKE = ROOT / "data"
+DATA_LAKE = project_config.DATA_DIR
 
 
 def run_spark_transaction_summary(csv_path: str | None = None) -> dict | None:
@@ -110,7 +110,7 @@ def write_spark_summary_output() -> str:
     if out is None:
         out = pandas_chunked_summary()
     out_path = DATA_LAKE / "spark_batch_summary.json"
-    DATA_LAKE.mkdir(parents=True, exist_ok=True)
+    project_config.DATA_DIR.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(out, f, indent=2, default=str)
     return str(out_path)

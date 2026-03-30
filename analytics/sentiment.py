@@ -2,13 +2,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pandas as pd
 from sklearn.metrics import accuracy_score, classification_report
 from textblob import TextBlob
-
-ROOT = Path(__file__).resolve().parent.parent
 
 
 def blob_label(polarity: float, thresh: float = 0.05) -> str:
