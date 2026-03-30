@@ -28,7 +28,7 @@ On the **first visit**, the app runs the batch pipeline to create `data/`, `mode
 | `pipeline/runner.py` | Orchestrates all batch steps (`run_full_pipeline`) |
 | `project_summary.py` | Long-form “Big Data” learner summary text |
 | `main.py` | CLI entrypoint (`python main.py`) |
-| `analytics/` | Fraud, sentiment, basket, churn, recommendations |
+| `analytics/` | Fraud, anomalies (Isolation Forest), sentiment, basket, churn, recommendations |
 | `utils/` | Synthetic data, cleaning, MapReduce sim, streaming helpers |
 | `spark_jobs/` | Optional PySpark + pandas chunked aggregation |
 | `ecom_dashboard/` | Streamlit loaders, help text, UI theme (avoid `dashboard` name on Cloud) |
@@ -37,6 +37,10 @@ On the **first visit**, the app runs the batch pipeline to create `data/`, `mode
 | `models/` | Saved models (generated) |
 | `streamlit_app.py` | Dashboard |
 | `.streamlit/config.toml` | Dark theme + accent colors (Cloud picks this up automatically) |
+
+## Documentation
+
+- **Full system reference** (every module, file, pipeline step, and output): **[docs/SYSTEM_REFERENCE.md](docs/SYSTEM_REFERENCE.md)**
 
 ## Presentation
 
