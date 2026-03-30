@@ -31,7 +31,7 @@ On the **first visit**, the app runs the batch pipeline to create `data/`, `mode
 | `analytics/` | Fraud, sentiment, basket, churn, recommendations |
 | `utils/` | Synthetic data, cleaning, MapReduce sim, streaming helpers |
 | `spark_jobs/` | Optional PySpark + pandas chunked aggregation |
-| `dashboard/` | Streamlit data loaders |
+| `dashboard/` | Loaders, help text (`explanations.py`), UI theme (`ui.py`) |
 | `data/` | Simulated data lake (generated) |
 | `output/` | Metrics and scored tables (generated) |
 | `models/` | Saved models (generated) |
