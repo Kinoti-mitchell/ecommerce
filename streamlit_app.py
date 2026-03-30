@@ -4,7 +4,8 @@ Streamlit dashboard for the e-commerce Big Data analytics demo.
 Run:
     streamlit run streamlit_app.py
 
-Ensure `python main.py` has been executed once to generate `output/` and `data/`.
+If `output/metrics.json` is missing (e.g. fresh clone or Streamlit Cloud), the app
+runs `main.main()` once on first load to generate `data/`, `models/`, and `output/`.
 """
 
 from __future__ import annotations
@@ -38,6 +39,43 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+_METRICS_PATH = ROOT / "output" / "metrics.json"
+
+
+def _run_batch_pipeline_if_needed() -> None:
+    """Hosted apps (Streamlit Cloud) do not run main.py; generate artifacts on first open."""
+    if _METRICS_PATH.exists():
+        return
+    st.title("E‑commerce Big Data Analytics Lab")
+    st.caption(
+        "Simulated data lake (HDFS-style `data/`), MapReduce-style rollups, optional PySpark, and Streamlit."
+    )
+    st.info(
+        "**First load:** generating the synthetic data lake, training models, and writing "
+        "`output/metrics.json`. This can take **2–8 minutes** on free hosting—please wait."
+    )
+    with st.status("Running batch pipeline (`main.py`)…", expanded=True) as status:
+        try:
+            import main as pipeline_main
+
+            pipeline_main.main()
+            status.update(label="Pipeline finished.", state="complete")
+        except Exception as e:
+            status.update(label="Pipeline failed.", state="error")
+            st.error(
+                "The batch pipeline failed. On **Streamlit Cloud**, try redeploying or run "
+                "`python main.py` locally and commit `output/metrics.json` if your course allows it."
+            )
+            st.exception(e)
+            st.stop()
+    if not _METRICS_PATH.exists():
+        st.error("`main.py` finished but `output/metrics.json` was not created.")
+        st.stop()
+    st.rerun()
+
+
+_run_batch_pipeline_if_needed()
+
 st.title("E‑commerce Big Data Analytics Lab")
 st.caption(
     "Simulated data lake (HDFS-style `data/`), MapReduce-style rollups, optional PySpark, and Streamlit."
@@ -45,7 +83,10 @@ st.caption(
 
 metrics = load_metrics()
 if not metrics:
-    st.warning("No `output/metrics.json` found. Run `python main.py` from the project root first.")
+    st.error(
+        "`output/metrics.json` is still missing after the pipeline. "
+        "Check logs or run `python main.py` locally."
+    )
     st.stop()
 
 # --- Sidebar ---

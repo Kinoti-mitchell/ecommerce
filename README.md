@@ -13,6 +13,12 @@ streamlit run streamlit_app.py
 - **Windows:** use `py -3` instead of `python` if needed.
 - **PySpark batch job:** set `USE_PYSPARK=1` (requires Java). Default uses pandas chunked aggregation.
 
+## Streamlit Community Cloud
+
+Deploy with main file **`streamlit_app.py`** and **`requirements.txt`**.
+
+On the **first visit**, the app runs the full **`main.py`** pipeline to create `data/`, `models/`, and `output/metrics.json` (nothing is committed for those paths). **First load can take several minutes**; free tiers may time out on very heavy runs. If deploy fails, run `python main.py` locally and temporarily commit `output/` + `models/` + `data/` (remove those lines from `.gitignore`) for a smaller static demo.
+
 ## Layout
 
 | Path | Purpose |
