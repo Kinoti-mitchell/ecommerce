@@ -104,8 +104,6 @@ models, write **`output/metrics.json`** and scores, and refresh **`models/`**. U
 changing code or when you want a full refresh. On **Streamlit Cloud** this can take **several
 minutes** and counts against app resources—use **`STREAMLIT_QUICK=1`** in secrets for a smaller,
 faster run when testing.
-
-If the host sets **`STREAMLIT_RETRAIN_SECRET`**, you must enter that value as a password before the retrain button works (simple gate for public demos).
 """.strip()
 
 TAB_SUMMARY = """

@@ -42,7 +42,6 @@ There is **no real production database**; all data is **synthetic** for teaching
 | **`STREAMLIT_QUICK=1`** or **`QUICK_MODE=1`** | Smaller synthetic data and lighter pipeline (see `data_lake_spec()`). |
 | **`USE_PYSPARK=1`** | `spark_jobs/batch_processing.py` uses real PySpark for transaction summary; otherwise **pandas chunked** read (same logical aggregation). |
 | **`STREAMLIT_DISABLE_RETRAIN=1`** | Hides sidebar “retrain” button on public deployments. |
-| **`STREAMLIT_RETRAIN_SECRET`** | If set, user must enter this password before the retrain button is enabled. |
 | **`STREAMLIT_QUICK`** | Also read by Streamlit first-load messaging; same as quick mode for data. |
 
 ---
@@ -176,7 +175,7 @@ Artifacts created by the pipeline (not all need to be committed for CI; often re
 | **Page config** | Wide layout, title, icon. |
 | **CSS** | `ui_theme.inject_custom_css()`. |
 | **Hero KPIs** | Fraud ROC-AUC (full + baseline), churn ROC-AUC, sentiment accuracy. |
-| **Sidebar** | User ID, Top-K, fraud chart sample size; model snapshot metrics; **Training / pipeline** expander (optional full retrain; `STREAMLIT_DISABLE_RETRAIN` / `STREAMLIT_RETRAIN_SECRET`). |
+| **Sidebar** | User ID, Top-K, fraud chart sample size; model snapshot metrics; **Training / pipeline** expander (optional full retrain; `STREAMLIT_DISABLE_RETRAIN`). |
 | **Main (top)** | **How to navigate** info + **Architecture snapshot** expander. |
 | **Fraud tab** | Histograms/deciles; **Try a hypothetical transaction**; model comparison; **Alert-style counts**; supervised scatter sample; **Isolation Forest** section. |
 | **Sentiment tab** | Pie/histogram, accuracy metric. |

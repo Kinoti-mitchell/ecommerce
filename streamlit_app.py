@@ -1,12 +1,5 @@
-"""
-Streamlit dashboard for the e-commerce Big Data analytics demo.
+"""Streamlit dashboard. Run: streamlit run streamlit_app.py"""
 
-Run:
-    streamlit run streamlit_app.py
-
-If `output/metrics.json` is missing (e.g. fresh clone or Streamlit Cloud), the app
-runs `main.main()` once on first load to generate `data/`, `models/`, and `output/`.
-"""
 
 from __future__ import annotations
 
@@ -44,13 +37,11 @@ from ecom_dashboard.loaders import (
 )
 from main import FINAL_SUMMARY_TEXT
 
-# Set to 1/true to hide the sidebar “retrain” controls (e.g. public Cloud).
 _DISABLE_RETRAIN_UI = os.environ.get("STREAMLIT_DISABLE_RETRAIN", "").strip().lower() in (
     "1",
     "true",
     "yes",
 )
-# Optional: if set, user must type this password to enable retrain (demo gate).
 _RETRAIN_SECRET = os.environ.get("STREAMLIT_RETRAIN_SECRET", "").strip()
 
 st.set_page_config(
@@ -84,7 +75,6 @@ def _head_anomaly_scores_csv(nrows: int = 40_000) -> pd.DataFrame | None:
 
 
 def _run_batch_pipeline_if_needed() -> None:
-    """Hosted apps (Streamlit Cloud) do not run main.py; generate artifacts on first open."""
     if _METRICS_PATH.exists():
         return
     st.title("E‑commerce Big Data Analytics Lab")
@@ -133,7 +123,6 @@ if not metrics:
     )
     st.stop()
 
-# --- Hero KPI strip ---
 st.markdown("##### At a glance")
 k1, k2, k3, k4 = st.columns(4)
 with k1:
@@ -166,9 +155,7 @@ with st.expander("Architecture snapshot (how pieces connect)", expanded=False):
     st.markdown(explain.ARCHITECTURE_ASCII)
 st.divider()
 
-# --- Sidebar ---
 st.sidebar.markdown("### Controls")
-st.sidebar.caption("**Detections report** = 2nd tab · **Fraud math in app** = Fraud tab → “Scored sample” + “Isolation Forest”.")
 st.sidebar.caption("Adjust what you see in the tabs below.")
 user_pick = st.sidebar.number_input("User ID (recommendations)", min_value=1, value=1, step=1)
 top_k = st.sidebar.slider("Top‑K products", 3, 15, 6)
@@ -242,7 +229,6 @@ with st.sidebar.expander("Training / pipeline", expanded=False):
             st.session_state.pop("retrain_confirm", None)
             st.rerun()
 
-# --- Tabs ---
 tab_fraud, tab_report, tab_sent, tab_rec, tab_churn, tab_basket, tab_summary = st.tabs(
     [
         "Fraud",

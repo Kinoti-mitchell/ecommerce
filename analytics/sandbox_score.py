@@ -1,4 +1,4 @@
-"""Score a single hypothetical transaction for demos (uses saved models + user history)."""
+"""Score one appended transaction row using saved fraud and anomaly models."""
 
 from __future__ import annotations
 
@@ -19,11 +19,6 @@ def score_hypothetical_transaction(
     device_id: int,
     context_tx: pd.DataFrame,
 ) -> tuple[dict[str, Any] | None, str | None]:
-    """
-    Append one row after that user's history in ``context_tx``, engineer features,
-    return fraud probability and anomaly score. ``context_tx`` must be raw-like
-    (same columns as ``transactions.csv``).
-    """
     hist = context_tx[context_tx["user_id"] == int(user_id)].copy()
     if hist.empty:
         return None, (
