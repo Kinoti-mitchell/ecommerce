@@ -184,7 +184,11 @@ with tab_fraud:
             )
             fig_hist.update_layout(legend_title_text="Fraud")
             st.plotly_chart(
-                ui_theme.polish_fig(fig_hist),
+                ui_theme.polish_fig(
+                    fig_hist,
+                    x_title="Transaction amount",
+                    y_title="Count",
+                ),
                 use_container_width=True,
                 config=_PLOT_CFG,
             )
@@ -202,11 +206,18 @@ with tab_fraud:
                 color_continuous_scale="Reds",
             )
             fig_bar.update_layout(showlegend=False)
-            st.plotly_chart(
-                ui_theme.polish_fig(fig_bar),
-                use_container_width=True,
-                config=_PLOT_CFG,
+            _fb = ui_theme.polish_fig(
+                fig_bar,
+                x_title="Amount decile (0 = lowest)",
+                y_title="Fraud rate",
             )
+            _fb.update_layout(
+                coloraxis_colorbar=dict(
+                    title=dict(text="Fraud rate", font=dict(color="#f1f5f9")),
+                    tickfont=dict(color="#cbd5e1"),
+                )
+            )
+            st.plotly_chart(_fb, use_container_width=True, config=_PLOT_CFG)
 
         st.divider()
         st.markdown("**Feature + cleaning impact**")
@@ -215,7 +226,7 @@ with tab_fraud:
         comp = pd.DataFrame(
             {
                 "Pipeline": ["Full (clean + features)", "Baseline (amount only)"],
-                "ROC‑AUC": [fc["roc_auc"], fd["roc_auc"]],
+                "ROC-AUC": [fc["roc_auc"], fd["roc_auc"]],
                 "Accuracy": [fc["accuracy"], fd["accuracy"]],
             }
         )
@@ -226,14 +237,18 @@ with tab_fraud:
             fig_cmp = px.bar(
                 comp,
                 x="Pipeline",
-                y="ROC‑AUC",
+                y="ROC-AUC",
                 color="Pipeline",
                 text_auto=".3f",
-                color_discrete_sequence=["#22d3ee", "#64748b"],
+                color_discrete_sequence=["#38bdf8", "#64748b"],
             )
             fig_cmp.update_layout(showlegend=False, yaxis_range=[0, 1.05])
             st.plotly_chart(
-                ui_theme.polish_fig(fig_cmp),
+                ui_theme.polish_fig(
+                    fig_cmp,
+                    x_title="Model",
+                    y_title="ROC-AUC",
+                ),
                 use_container_width=True,
                 config=_PLOT_CFG,
             )
@@ -257,7 +272,11 @@ with tab_fraud:
                 labels={"fraud_proba": "Fraud probability"},
             )
             st.plotly_chart(
-                ui_theme.polish_fig(fig_s),
+                ui_theme.polish_fig(
+                    fig_s,
+                    x_title="Transaction amount",
+                    y_title="Fraud probability",
+                ),
                 use_container_width=True,
                 config=_PLOT_CFG,
             )
@@ -302,7 +321,11 @@ with tab_sent:
                 labels={"polarity": "Polarity", "count": "Reviews"},
             )
             st.plotly_chart(
-                ui_theme.polish_fig(fig_hist2),
+                ui_theme.polish_fig(
+                    fig_hist2,
+                    x_title="Polarity score",
+                    y_title="Number of reviews",
+                ),
                 use_container_width=True,
                 config=_PLOT_CFG,
             )
@@ -332,11 +355,18 @@ with tab_rec:
                 labels={"score": "Score", "product_id": "Product"},
             )
             fig_r.update_layout(showlegend=False)
-            st.plotly_chart(
-                ui_theme.polish_fig(fig_r),
-                use_container_width=True,
-                config=_PLOT_CFG,
+            _fr = ui_theme.polish_fig(
+                fig_r,
+                x_title="Product ID",
+                y_title="Score",
             )
+            _fr.update_layout(
+                coloraxis_colorbar=dict(
+                    title=dict(text="Score", font=dict(color="#f1f5f9")),
+                    tickfont=dict(color="#cbd5e1"),
+                )
+            )
+            st.plotly_chart(_fr, use_container_width=True, config=_PLOT_CFG)
     except Exception as e:
         st.error(str(e))
 
@@ -362,7 +392,11 @@ with tab_churn:
             labels={"churn_proba": "Predicted churn probability"},
         )
         st.plotly_chart(
-            ui_theme.polish_fig(fig_c),
+            ui_theme.polish_fig(
+                fig_c,
+                x_title="Predicted churn probability",
+                y_title="Customer count",
+            ),
             use_container_width=True,
             config=_PLOT_CFG,
         )
@@ -390,11 +424,18 @@ with tab_basket:
                 color_continuous_scale="Viridis",
                 labels={"confidence": "Confidence", "lift": "Lift"},
             )
-            st.plotly_chart(
-                ui_theme.polish_fig(fig_sc),
-                use_container_width=True,
-                config=_PLOT_CFG,
+            _fsc = ui_theme.polish_fig(
+                fig_sc,
+                x_title="Confidence",
+                y_title="Lift",
             )
+            _fsc.update_layout(
+                coloraxis_colorbar=dict(
+                    title=dict(text="Lift", font=dict(color="#f1f5f9")),
+                    tickfont=dict(color="#cbd5e1"),
+                )
+            )
+            st.plotly_chart(_fsc, use_container_width=True, config=_PLOT_CFG)
 
 with tab_summary:
     st.subheader("Hadoop · Spark · business context")
