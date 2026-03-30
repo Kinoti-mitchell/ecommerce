@@ -14,6 +14,9 @@ The project simulates a **batch analytics pipeline** over a **synthetic e-commer
 | **Batch pipeline** | `pipeline/runner.py` → `run_full_pipeline()`: clean data, train models, score rows, run MapReduce-style and Spark/pandas aggregations, write `output/` and `models/`. |
 | **CLI entry** | `main.py` calls `run_full_pipeline()`. |
 | **Dashboard** | `streamlit_app.py` reads `output/metrics.json` and sample files; charts and tables; optional full retrain from the UI. |
+| **`analytics/sandbox_score.py`** | Demo helper: score one hypothetical transaction using saved fraud + anomaly models. |
+| **`notebooks/walkthrough.ipynb`** | Tiny clean → feature-engineering walkthrough. |
+| **`tests/`** + **`.github/workflows/ci.yml`** | `pytest` smoke tests on push/PR. |
 
 There is **no real production database**; all data is **synthetic** for teaching and demos.
 
@@ -39,6 +42,7 @@ There is **no real production database**; all data is **synthetic** for teaching
 | **`STREAMLIT_QUICK=1`** or **`QUICK_MODE=1`** | Smaller synthetic data and lighter pipeline (see `data_lake_spec()`). |
 | **`USE_PYSPARK=1`** | `spark_jobs/batch_processing.py` uses real PySpark for transaction summary; otherwise **pandas chunked** read (same logical aggregation). |
 | **`STREAMLIT_DISABLE_RETRAIN=1`** | Hides sidebar “retrain” button on public deployments. |
+| **`STREAMLIT_RETRAIN_SECRET`** | If set, user must enter this password before the retrain button is enabled. |
 | **`STREAMLIT_QUICK`** | Also read by Streamlit first-load messaging; same as quick mode for data. |
 
 ---
@@ -77,7 +81,7 @@ Written by **`utils/generate_datasets.write_data_lake()`** (Step 1 of the pipeli
 | **8** | `write_spark_summary_output` | `data/spark_batch_summary.json` |
 | **9** | Simulated streaming: batch fraud stats, live event fraud scores, live CF demo | `output/streaming_fraud_batches.csv`, `streaming_fraud_live_sample.csv`, `streaming_recommendations_demo.csv` |
 
-Finally **`output/metrics.json`** is written with fraud (clean + baseline), sentiment, churn, basket counts, CF matrix sizes, data lake stats, MapReduce user count, anomaly summary, and notes.
+Finally **`output/metrics.json`** is written with fraud (clean + baseline), sentiment, churn, basket counts, CF matrix sizes, data lake stats, MapReduce user count, anomaly summary, and notes. The runner also writes **`output/run_manifest.json`** (run metadata) and appends one line to **`output/metrics_history.jsonl`** (ROC snapshot per run).
 
 ---
 
@@ -91,6 +95,7 @@ Finally **`output/metrics.json`** is written with fraud (clean + baseline), sent
 | **`churn.py`** | GradientBoostingClassifier on tenure, monthly_spend, sessions_per_month, support_tickets; predicts `churned`. |
 | **`basket.py`** | Groups orders into baskets; **mlxtend Apriori + association_rules** when available, else **pandas pairwise fallback** for frequent pairs and rules. |
 | **`recommendations.py`** | Pivot to user×product matrix, mean-center per user, **cosine similarity** between users, neighbor-weighted scores for **`recommend_for_user`**. Artifacts in `.npz` + `cf_meta.joblib`. |
+| **`sandbox_score.py`** | **`score_hypothetical_transaction`**: append one row for a user, run clean + feature engineering, apply saved fraud RF + IF (for Streamlit “hypothetical transaction” demo). |
 
 ---
 
@@ -146,6 +151,8 @@ Artifacts created by the pipeline (not all need to be committed for CI; often re
 | **`streaming_fraud_batches.csv`** | Per-batch mean/max fraud probability. |
 | **`streaming_fraud_live_sample.csv`** | Event-level streaming fraud demo. |
 | **`streaming_recommendations_demo.csv`** | Small live CF demo. |
+| **`run_manifest.json`** | UTC timestamp, pipeline mode, quick flag (last run). |
+| **`metrics_history.jsonl`** | One JSON line per pipeline run (append-only ROC-AUC snapshot). |
 
 ---
 
@@ -154,7 +161,7 @@ Artifacts created by the pipeline (not all need to be committed for CI; often re
 | File | Role |
 |------|------|
 | **`loaders.py`** | Read `metrics.json`, sample transactions/reviews, rules, churn scores, sentiment CSV, **anomaly top-500**. |
-| **`explanations.py`** | Markdown strings for expanders (overview, tabs, training, anomalies, report). |
+| **`explanations.py`** | Markdown strings for expanders (overview, tabs, training, anomalies, report, **architecture ASCII**). |
 | **`ui.py`** | **`inject_custom_css`**, **`polish_fig`** (Plotly layout), **`plotly_config`**, fraud/sentiment color constants. |
 | **`findings_report.py`** | **`build_findings_report_markdown(metrics)`** for the Report tab and download. |
 | **`__init__.py`** | Package marker. |
@@ -169,13 +176,14 @@ Artifacts created by the pipeline (not all need to be committed for CI; often re
 | **Page config** | Wide layout, title, icon. |
 | **CSS** | `ui_theme.inject_custom_css()`. |
 | **Hero KPIs** | Fraud ROC-AUC (full + baseline), churn ROC-AUC, sentiment accuracy. |
-| **Sidebar** | User ID, Top-K, fraud chart sample size; model snapshot metrics; **Training / pipeline** expander (optional full retrain; can be disabled with `STREAMLIT_DISABLE_RETRAIN`). |
-| **Fraud tab** | Histograms/deciles, model comparison, supervised scatter sample; **Isolation Forest** section with metrics, table, scatter. |
+| **Sidebar** | User ID, Top-K, fraud chart sample size; model snapshot metrics; **Training / pipeline** expander (optional full retrain; `STREAMLIT_DISABLE_RETRAIN` / `STREAMLIT_RETRAIN_SECRET`). |
+| **Main (top)** | **How to navigate** info + **Architecture snapshot** expander. |
+| **Fraud tab** | Histograms/deciles; **Try a hypothetical transaction**; model comparison; **Alert-style counts**; supervised scatter sample; **Isolation Forest** section. |
 | **Sentiment tab** | Pie/histogram, accuracy metric. |
 | **Recommendations tab** | Table + bar chart for selected user. |
 | **Churn tab** | Table sample, histogram, ROC metric. |
 | **Market basket tab** | Rules table, scatter confidence vs lift. |
-| **Report tab** | Auto-generated findings markdown + **download .md**. |
+| **Detections report tab** (second tab) | Auto-generated findings markdown + **download .md**; **metrics history** + **run manifest** expanders when files exist. |
 | **Big Data summary tab** | Hadoop/Spark/business bullets + full **`project_summary.FINAL_SUMMARY_TEXT`**. |
 
 ---
@@ -194,7 +202,7 @@ Theme colors for **dark/light** tables (`[theme]`, `[theme.dark]`, `[theme.light
 
 ## 15. Dependencies (`requirements.txt`)
 
-Core stack: **pandas**, **numpy**, **scikit-learn**, **plotly**, **streamlit**, **textblob**, **nltk**, **mlxtend**, **joblib**; **pyspark** listed for optional Spark path (needs Java when enabled).
+Core stack: **pandas**, **numpy**, **scikit-learn**, **plotly**, **streamlit**, **textblob**, **nltk**, **mlxtend**, **joblib**, **pytest**; **pyspark** listed for optional Spark path (needs Java when enabled).
 
 ---
 
@@ -205,6 +213,7 @@ Core stack: **pandas**, **numpy**, **scikit-learn**, **plotly**, **streamlit**, 
 | **`README.md`** | Quick start: install, `python main.py`, `streamlit run`, Cloud notes. |
 | **`docs/PRESENTATION.md`** | Slide-oriented / narrative material for the project (if present). |
 | **`docs/SYSTEM_REFERENCE.md`** | **This file** — full component reference. |
+| **`docs/PARTITIONS.md`** | Concept note on partitioned lakes vs flat `data/` in this demo. |
 
 ---
 

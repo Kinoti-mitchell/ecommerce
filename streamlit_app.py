@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import json
 import os
 import sys
 from pathlib import Path
@@ -28,6 +29,7 @@ import config
 
 from analytics.fraud import engineer_fraud_features, load_fraud_artifacts
 from analytics.recommendations import recommend_for_user
+from analytics.sandbox_score import score_hypothetical_transaction
 from ecom_dashboard import explanations as explain
 from ecom_dashboard import ui as ui_theme
 from ecom_dashboard.findings_report import build_findings_report_markdown
@@ -48,6 +50,8 @@ _DISABLE_RETRAIN_UI = os.environ.get("STREAMLIT_DISABLE_RETRAIN", "").strip().lo
     "true",
     "yes",
 )
+# Optional: if set, user must type this password to enable retrain (demo gate).
+_RETRAIN_SECRET = os.environ.get("STREAMLIT_RETRAIN_SECRET", "").strip()
 
 st.set_page_config(
     page_title="E‑commerce Big Data Analytics",
@@ -61,6 +65,22 @@ ui_theme.inject_custom_css()
 
 _METRICS_PATH = config.OUTPUT_DIR / "metrics.json"
 _PLOT_CFG = ui_theme.plotly_config()
+
+
+@st.cache_data
+def _head_fraud_scored_csv(nrows: int = 40_000) -> pd.DataFrame | None:
+    p = config.OUTPUT_DIR / "fraud_scored_transactions.csv"
+    if not p.exists():
+        return None
+    return pd.read_csv(p, nrows=nrows)
+
+
+@st.cache_data
+def _head_anomaly_scores_csv(nrows: int = 40_000) -> pd.DataFrame | None:
+    p = config.OUTPUT_DIR / "transaction_anomaly_scores.csv"
+    if not p.exists():
+        return None
+    return pd.read_csv(p, nrows=nrows)
 
 
 def _run_batch_pipeline_if_needed() -> None:
@@ -141,10 +161,14 @@ with k4:
         f"{_sacc:.3f}" if _sacc is not None else "—",
         help="Vs synthetic labels in demo data",
     )
+st.info(explain.WHERE_TO_LOOK)
+with st.expander("Architecture snapshot (how pieces connect)", expanded=False):
+    st.markdown(explain.ARCHITECTURE_ASCII)
 st.divider()
 
 # --- Sidebar ---
 st.sidebar.markdown("### Controls")
+st.sidebar.caption("**Detections report** = 2nd tab · **Fraud math in app** = Fraud tab → “Scored sample” + “Isolation Forest”.")
 st.sidebar.caption("Adjust what you see in the tabs below.")
 user_pick = st.sidebar.number_input("User ID (recommendations)", min_value=1, value=1, step=1)
 top_k = st.sidebar.slider("Top‑K products", 3, 15, 6)
@@ -170,6 +194,16 @@ with st.sidebar.expander("Training / pipeline", expanded=False):
     if _DISABLE_RETRAIN_UI:
         st.info("Retraining from the browser is **disabled** on this deployment (`STREAMLIT_DISABLE_RETRAIN`).")
     else:
+        _secret_ok = True
+        if _RETRAIN_SECRET:
+            _pw = st.text_input(
+                "Retrain password (`STREAMLIT_RETRAIN_SECRET` on host)",
+                type="password",
+                key="retrain_pw_gate",
+            )
+            _secret_ok = _pw == _RETRAIN_SECRET
+            if not _secret_ok and _pw:
+                st.caption("Password does not match — retrain stays disabled.")
         _confirm = st.checkbox(
             "I understand this may take several minutes and will overwrite `data/`, `models/`, and `output/`.",
             value=False,
@@ -178,7 +212,7 @@ with st.sidebar.expander("Training / pipeline", expanded=False):
         if st.button(
             "Regenerate data lake & retrain all models",
             type="primary",
-            disabled=not _confirm,
+            disabled=not _confirm or not _secret_ok,
             key="retrain_run",
         ):
             from pipeline.runner import run_full_pipeline
@@ -209,20 +243,24 @@ with st.sidebar.expander("Training / pipeline", expanded=False):
             st.rerun()
 
 # --- Tabs ---
-tab_fraud, tab_sent, tab_rec, tab_churn, tab_basket, tab_report, tab_summary = st.tabs(
+tab_fraud, tab_report, tab_sent, tab_rec, tab_churn, tab_basket, tab_summary = st.tabs(
     [
         "Fraud",
+        "Detections report",
         "Sentiment",
         "Recommendations",
         "Churn",
         "Market basket",
-        "Report",
         "Big Data summary",
     ]
 )
 
 with tab_fraud:
     st.subheader("Fraud detection")
+    st.caption(
+        "**In this tab:** charts use your **sample size** slider. **Supervised fraud probability** is computed live "
+        "in *Scored sample* (below). **Unsupervised anomaly scores** are precomputed by the pipeline—see *Isolation Forest*."
+    )
     with st.expander("What this tab shows", expanded=False):
         st.markdown(explain.TAB_FRAUD)
     tx = load_transactions_sample(fraud_sample_n)
@@ -280,6 +318,36 @@ with tab_fraud:
             )
             st.plotly_chart(_fb, use_container_width=True, config=_PLOT_CFG)
 
+        with st.expander("Try a hypothetical transaction (demo)", expanded=False):
+            st.caption(
+                "Appends **your** amount/location/device as a new row after that user’s history "
+                "in the **current chart sample**, then runs the saved **fraud** and **anomaly** models."
+            )
+            with st.form("hypo_tx_form"):
+                _def_u = int(tx["user_id"].iloc[0])
+                hu = st.number_input("User ID", min_value=1, value=_def_u, step=1)
+                ha = st.number_input("Amount", min_value=0.01, value=250.0, format="%.2f")
+                hl = st.number_input("Location ID", min_value=1, value=10, step=1)
+                hd = st.number_input("Device ID", min_value=1, value=99_999, step=1)
+                go = st.form_submit_button("Score this transaction")
+            if go:
+                res, err = score_hypothetical_transaction(hu, ha, hl, hd, tx)
+                if err:
+                    st.warning(err)
+                elif res:
+                    c_a, c_b = st.columns(2)
+                    with c_a:
+                        st.metric("Fraud probability (supervised RF)", f"{res['fraud_proba']:.3f}")
+                    with c_b:
+                        st.metric(
+                            "Anomaly score (Isolation Forest)",
+                            f"{res['anomaly_score']:.3f}" if res["anomaly_score"] is not None else "—",
+                        )
+                    st.write(
+                        f"Engineered flags: unusual_location={res['unusual_location']}, "
+                        f"high_spend={res['high_spend']}, new_device={res['new_device']}"
+                    )
+
         st.divider()
         st.markdown("**Feature + cleaning impact**")
         fc = metrics["fraud_model_clean"]
@@ -316,6 +384,9 @@ with tab_fraud:
 
         st.divider()
         st.markdown("**Scored sample (model probability vs amount)**")
+        st.caption(
+            "Live calculation: loads the saved Random Forest, engineers features for 200 rows, runs `predict_proba`."
+        )
         try:
             clf, cols = load_fraud_artifacts("fraud_rf")
             small = tx.head(200).copy()
@@ -344,8 +415,35 @@ with tab_fraud:
         except Exception as e:
             st.warning(f"Could not load fraud model: {e}")
 
+    with st.expander("Alert-style counts (threshold demo)", expanded=False):
+        st.caption(
+            "Counts rows in the **first ~40k** lines of pipeline outputs (no retrain). "
+            "Useful to narrate “how many would we flag?”"
+        )
+        thr_f = st.slider("Flag if fraud probability ≥", 0.0, 1.0, 0.5, 0.05, key="thr_fraud")
+        thr_a = st.slider("Flag if anomaly score ≥", 0.0, 1.0, 0.55, 0.01, key="thr_anom")
+        fs = _head_fraud_scored_csv(40_000)
+        an = _head_anomaly_scores_csv(40_000)
+        c1, c2 = st.columns(2)
+        with c1:
+            if fs is not None and "fraud_proba" in fs.columns:
+                nf = int((fs["fraud_proba"] >= thr_f).sum())
+                st.metric("Rows ≥ fraud threshold", f"{nf:,}", help=f"Of {len(fs):,} rows loaded")
+            else:
+                st.info("No `fraud_scored_transactions.csv` yet — run the pipeline.")
+        with c2:
+            if an is not None and "anomaly_score" in an.columns:
+                na = int((an["anomaly_score"] >= thr_a).sum())
+                st.metric("Rows ≥ anomaly threshold", f"{na:,}", help=f"Of {len(an):,} rows loaded")
+            else:
+                st.info("No `transaction_anomaly_scores.csv` yet — run the pipeline.")
+
     st.divider()
     st.markdown("**Unsupervised anomalies (Isolation Forest)**")
+    st.caption(
+        "Scores come from the last pipeline run (`output/transaction_anomalies_top500.csv`). "
+        "Training is unsupervised—no fraud label used. Retrain to refresh."
+    )
     with st.expander("How this differs from the fraud model", expanded=False):
         st.markdown(explain.TAB_ANOMALIES)
     _anom = metrics.get("transaction_anomalies")
@@ -392,6 +490,35 @@ with tab_fraud:
         st.info(
             "No anomaly artifacts yet. Run **`python main.py`** or **Training / pipeline** → retrain "
             "to write `output/transaction_anomalies_top500.csv` and refresh metrics."
+        )
+
+with tab_report:
+    st.subheader("Detections & findings report")
+    with st.expander("What this tab shows", expanded=False):
+        st.markdown(explain.TAB_REPORT)
+    _mh = config.OUTPUT_DIR / "metrics_history.jsonl"
+    if _mh.exists() and _mh.stat().st_size > 0:
+        with st.expander("Recent pipeline runs (`metrics_history.jsonl`)", expanded=False):
+            _lines = [ln for ln in _mh.read_text(encoding="utf-8").splitlines() if ln.strip()][-8:]
+            try:
+                st.dataframe(pd.DataFrame([json.loads(ln) for ln in _lines]), use_container_width=True, hide_index=True)
+            except json.JSONDecodeError:
+                st.text("\n".join(_lines))
+    _rm = config.OUTPUT_DIR / "run_manifest.json"
+    if _rm.exists():
+        with st.expander("Last run manifest (`run_manifest.json`)", expanded=False):
+            st.json(json.loads(_rm.read_text(encoding="utf-8")))
+    if not metrics:
+        st.warning("No metrics loaded — run the pipeline first.")
+    else:
+        _report_md = build_findings_report_markdown(metrics)
+        st.markdown(_report_md)
+        st.download_button(
+            label="Download report as Markdown",
+            data=_report_md.encode("utf-8"),
+            file_name="detections_and_findings_report.md",
+            mime="text/markdown",
+            help="For your write-up: open in any editor or paste into Google Docs / Word.",
         )
 
 with tab_sent:
@@ -547,23 +674,6 @@ with tab_basket:
                 )
             )
             st.plotly_chart(_fsc, use_container_width=True, config=_PLOT_CFG)
-
-with tab_report:
-    st.subheader("Detections & findings report")
-    with st.expander("What this tab shows", expanded=False):
-        st.markdown(explain.TAB_REPORT)
-    if not metrics:
-        st.warning("No metrics loaded — run the pipeline first.")
-    else:
-        _report_md = build_findings_report_markdown(metrics)
-        st.markdown(_report_md)
-        st.download_button(
-            label="Download report as Markdown",
-            data=_report_md.encode("utf-8"),
-            file_name="detections_and_findings_report.md",
-            mime="text/markdown",
-            help="For your write-up: open in any editor or paste into Google Docs / Word.",
-        )
 
 with tab_summary:
     st.subheader("Hadoop · Spark · business context")

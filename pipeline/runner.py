@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import warnings
+from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
@@ -190,6 +191,22 @@ def run_full_pipeline() -> None:
     }
     with open(config.OUTPUT_DIR / "metrics.json", "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2, default=str)
+
+    manifest = {
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "pipeline_mode": metrics["pipeline_mode"],
+        "quick_mode": q,
+    }
+    with open(config.OUTPUT_DIR / "run_manifest.json", "w", encoding="utf-8") as mf:
+        json.dump(manifest, mf, indent=2)
+    hist_line = {
+        "at": manifest["generated_at_utc"],
+        "fraud_roc_auc_full": metrics["fraud_model_clean"]["roc_auc"],
+        "fraud_roc_auc_baseline": metrics["fraud_model_dirty_baseline"]["roc_auc"],
+        "churn_roc_auc": metrics["churn"]["roc_auc"],
+    }
+    with open(config.OUTPUT_DIR / "metrics_history.jsonl", "a", encoding="utf-8") as hf:
+        hf.write(json.dumps(hist_line) + "\n")
 
     print("\n--- Key metrics (see output/metrics.json) ---")
     print("Fraud ROC-AUC (full pipeline):", metrics["fraud_model_clean"]["roc_auc"])

@@ -41,6 +41,23 @@ On the **first visit**, the app runs the batch pipeline to create `data/`, `mode
 ## Documentation
 
 - **Full system reference** (every module, file, pipeline step, and output): **[docs/SYSTEM_REFERENCE.md](docs/SYSTEM_REFERENCE.md)**
+- **Partitioned lakes (concept vs this repo):** **[docs/PARTITIONS.md](docs/PARTITIONS.md)**
+
+## 5-minute demo path
+
+1. `python main.py` (or open Streamlit once and let it run the pipeline).
+2. `streamlit run streamlit_app.py` — read the blue **How to navigate** box at the top.
+3. Open **Fraud** → expand **Try a hypothetical transaction** → **Score**.
+4. Open **Detections report** (second tab) → download Markdown if needed.
+5. Optional: **Sidebar → Training / pipeline** only if you want a full refresh (slow on Cloud).
+
+## Tests & CI
+
+```bash
+pytest tests/ -q
+```
+
+GitHub Actions runs the same on push/PR (see `.github/workflows/ci.yml`).
 
 ## Presentation
 
