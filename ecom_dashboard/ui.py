@@ -47,16 +47,21 @@ def inject_custom_css() -> None:
                 0 4px 24px rgba(0, 0, 0, 0.45),
                 inset 0 1px 0 rgba(255, 255, 255, 0.06);
         }
-        /* Title: always solid light text (never gradient-fill on text) */
-        h1 {
+        /* Title: solid light text; Streamlit theme can otherwise paint headers too dark */
+        h1,
+        [data-testid="stHeader"] h1,
+        [data-testid="stHeadingWithActionElements"] h1,
+        [data-testid="stMarkdownContainer"] h1 {
             font-weight: 800 !important;
             letter-spacing: -0.02em;
-            color: #ffffff !important;
-            -webkit-text-fill-color: #ffffff !important;
+            color: #f8fafc !important;
+            -webkit-text-fill-color: #f8fafc !important;
             background: none !important;
+            background-image: none !important;
             text-shadow:
-                0 0 20px rgba(15, 23, 42, 0.9),
-                0 2px 4px rgba(0, 0, 0, 0.5);
+                0 0 24px rgba(15, 23, 42, 1),
+                0 1px 0 rgba(0, 0, 0, 0.8),
+                0 2px 8px rgba(0, 0, 0, 0.6);
         }
         /* Gradient accent bar under title (pretty + no readability issue) */
         h1::after {
@@ -117,16 +122,29 @@ def inject_custom_css() -> None:
         [data-testid="stSidebar"] .st-emotion-cache {
             color: inherit;
         }
-        /* Expanders */
-        div[data-testid="stExpander"] details {
+        /* Expanders — full chrome dark (avoids default light strips on Cloud) */
+        div[data-testid="stExpander"] {
+            background: rgba(30, 41, 59, 0.92) !important;
             border: 1px solid rgba(56, 189, 248, 0.35);
             border-radius: 12px;
+            overflow: hidden;
+        }
+        div[data-testid="stExpander"] > div {
+            background: transparent !important;
+        }
+        div[data-testid="stExpander"] details {
+            border: none;
+            border-radius: 0;
             padding: 0.55rem 0.9rem;
-            background: rgba(30, 41, 59, 0.95) !important;
+            background: transparent !important;
         }
         div[data-testid="stExpander"] summary {
             font-weight: 600 !important;
             color: #ffffff !important;
+            background: rgba(15, 23, 42, 0.6) !important;
+        }
+        div[data-testid="stExpander"] summary:hover {
+            background: rgba(51, 65, 85, 0.85) !important;
         }
         div[data-testid="stExpander"] [data-testid="stMarkdownContainer"] p,
         div[data-testid="stExpander"] [data-testid="stMarkdownContainer"] li {
@@ -181,6 +199,12 @@ def inject_custom_css() -> None:
             border-radius: 10px;
             border: 1px solid rgba(125, 211, 252, 0.2);
         }
+        /* Plotly embed: avoid white gutter around chart on some hosts */
+        [data-testid="stPlotlyChart"],
+        [data-testid="stPlotlyChart"] > div,
+        .js-plotly-plot .plotly {
+            background: transparent !important;
+        }
         hr {
             border-color: rgba(148, 163, 184, 0.25) !important;
         }
@@ -212,6 +236,8 @@ def polish_fig(
     y_title: str | None = None,
 ) -> Any:
     """Chart surface aligned with frosted panel (slate, not white)."""
+    # Never set title_font_* with title=None — Plotly omits title.text and Plotly.js
+    # shows the literal string "undefined" above charts (Streamlit embed).
     fig.update_layout(
         template="plotly_dark",
         font=dict(
@@ -219,9 +245,7 @@ def polish_fig(
             size=13,
             color="#f1f5f9",
         ),
-        title=None,
-        title_font_size=14,
-        title_font_color="#ffffff",
+        title=dict(text=""),
         margin=dict(l=12, r=12, t=28, b=12),
         paper_bgcolor="#1e293b",
         plot_bgcolor="#1e293b",
