@@ -36,6 +36,7 @@ On the **first visit**, the app runs the batch pipeline to create `data/`, `mode
 | `output/` | Metrics and scored tables (generated) |
 | `models/` | Saved models (generated) |
 | `streamlit_app.py` | Dashboard |
+| `.streamlit/config.toml` | Dark theme + accent colors (Cloud picks this up automatically) |
 
 ## Presentation
 

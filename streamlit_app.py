@@ -44,7 +44,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-px.defaults.template = "plotly_white"
+px.defaults.template = "plotly_dark"
 ui_theme.inject_custom_css()
 
 _METRICS_PATH = config.OUTPUT_DIR / "metrics.json"
@@ -229,7 +229,7 @@ with tab_fraud:
                 y="ROC‑AUC",
                 color="Pipeline",
                 text_auto=".3f",
-                color_discrete_sequence=["#2563eb", "#94a3b8"],
+                color_discrete_sequence=["#22d3ee", "#64748b"],
             )
             fig_cmp.update_layout(showlegend=False, yaxis_range=[0, 1.05])
             st.plotly_chart(
@@ -328,7 +328,7 @@ with tab_rec:
                 y="score",
                 text_auto=".3f",
                 color="score",
-                color_continuous_scale="Blues",
+                color_continuous_scale="PuBu",
                 labels={"score": "Score", "product_id": "Product"},
             )
             fig_r.update_layout(showlegend=False)
@@ -358,7 +358,7 @@ with tab_churn:
             nbins=40,
             barmode="overlay",
             opacity=0.65,
-            color_discrete_map={"No": "#0d9488", "Yes": "#e11d48"},
+            color_discrete_map={"No": ui_theme.FRAUD_COLORS["0"], "Yes": ui_theme.FRAUD_COLORS["1"]},
             labels={"churn_proba": "Predicted churn probability"},
         )
         st.plotly_chart(
