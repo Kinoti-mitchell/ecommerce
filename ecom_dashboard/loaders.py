@@ -53,3 +53,11 @@ def load_sentiment_results() -> pd.DataFrame:
     if not p.exists():
         return pd.DataFrame()
     return pd.read_csv(p)
+
+
+def load_anomalies_top500() -> pd.DataFrame:
+    """Pre-ranked unsupervised anomaly scores (see `analytics.anomalies`)."""
+    p = OUTPUT / "transaction_anomalies_top500.csv"
+    if not p.exists():
+        return pd.DataFrame()
+    return pd.read_csv(p)

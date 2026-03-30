@@ -10,6 +10,9 @@ runs `main.main()` once on first load to generate `data/`, `models/`, and `outpu
 
 from __future__ import annotations
 
+import contextlib
+import io
+import os
 import sys
 from pathlib import Path
 
@@ -27,7 +30,9 @@ from analytics.fraud import engineer_fraud_features, load_fraud_artifacts
 from analytics.recommendations import recommend_for_user
 from ecom_dashboard import explanations as explain
 from ecom_dashboard import ui as ui_theme
+from ecom_dashboard.findings_report import build_findings_report_markdown
 from ecom_dashboard.loaders import (
+    load_anomalies_top500,
     load_churn_scores,
     load_metrics,
     load_reviews_sample,
@@ -36,6 +41,13 @@ from ecom_dashboard.loaders import (
     load_transactions_sample,
 )
 from main import FINAL_SUMMARY_TEXT
+
+# Set to 1/true to hide the sidebar “retrain” controls (e.g. public Cloud).
+_DISABLE_RETRAIN_UI = os.environ.get("STREAMLIT_DISABLE_RETRAIN", "").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+)
 
 st.set_page_config(
     page_title="E‑commerce Big Data Analytics",
@@ -148,14 +160,63 @@ st.sidebar.metric("Churn ROC‑AUC", f"{metrics['churn']['roc_auc']:.3f}")
 with st.sidebar.expander("What do these metrics mean?"):
     st.markdown(explain.SIDEBAR_METRICS)
 
+st.sidebar.divider()
+with st.sidebar.expander("Training / pipeline", expanded=False):
+    st.markdown(explain.TRAINING_PANEL)
+    _quick = config.quick_mode()
+    st.caption(
+        f"Quick mode: **{'on' if _quick else 'off'}** (smaller data when on — set `STREAMLIT_QUICK=1` in secrets)."
+    )
+    if _DISABLE_RETRAIN_UI:
+        st.info("Retraining from the browser is **disabled** on this deployment (`STREAMLIT_DISABLE_RETRAIN`).")
+    else:
+        _confirm = st.checkbox(
+            "I understand this may take several minutes and will overwrite `data/`, `models/`, and `output/`.",
+            value=False,
+            key="retrain_confirm",
+        )
+        if st.button(
+            "Regenerate data lake & retrain all models",
+            type="primary",
+            disabled=not _confirm,
+            key="retrain_run",
+        ):
+            from pipeline.runner import run_full_pipeline
+
+            log_buf = io.StringIO()
+            with st.status("Running full pipeline (`run_full_pipeline`)…", expanded=True) as status:
+                try:
+                    with contextlib.redirect_stdout(log_buf):
+                        with contextlib.redirect_stderr(log_buf):
+                            run_full_pipeline()
+                    status.update(label="Pipeline finished successfully.", state="complete")
+                except Exception as e:
+                    status.update(label="Pipeline failed.", state="error")
+                    st.error("Training failed. Check the log below or run `python main.py` in a terminal.")
+                    st.exception(e)
+                    st.text_area(
+                        "Captured output (tail)",
+                        value=log_buf.getvalue()[-12000:],
+                        height=240,
+                        disabled=True,
+                    )
+                    st.stop()
+            _tail = log_buf.getvalue()[-12000:]
+            if _tail.strip():
+                st.text_area("Run log (tail)", value=_tail, height=200, disabled=True)
+            st.success("Models and metrics updated. Reloading the app…")
+            st.session_state.pop("retrain_confirm", None)
+            st.rerun()
+
 # --- Tabs ---
-tab_fraud, tab_sent, tab_rec, tab_churn, tab_basket, tab_summary = st.tabs(
+tab_fraud, tab_sent, tab_rec, tab_churn, tab_basket, tab_report, tab_summary = st.tabs(
     [
         "Fraud",
         "Sentiment",
         "Recommendations",
         "Churn",
         "Market basket",
+        "Report",
         "Big Data summary",
     ]
 )
@@ -282,6 +343,56 @@ with tab_fraud:
             )
         except Exception as e:
             st.warning(f"Could not load fraud model: {e}")
+
+    st.divider()
+    st.markdown("**Unsupervised anomalies (Isolation Forest)**")
+    with st.expander("How this differs from the fraud model", expanded=False):
+        st.markdown(explain.TAB_ANOMALIES)
+    _anom = metrics.get("transaction_anomalies")
+    _anom_df = load_anomalies_top500()
+    if _anom and not _anom_df.empty:
+        a1, a2, a3 = st.columns(3)
+        with a1:
+            st.metric("Transactions scored", f"{_anom['n_rows']:,}")
+        with a2:
+            st.metric("Isolation Forest outliers", f"{_anom['n_flagged_outliers']:,}")
+        with a3:
+            _ov = _anom.get("top_100_overlap_with_labeled_fraud")
+            st.metric(
+                "Labeled fraud in top 100 scores",
+                f"{_ov:.1%}" if _ov is not None else "—",
+                help="Only a sanity check — training ignores the fraud label.",
+            )
+        _fc = _anom.get("feature_cols") or []
+        st.caption(
+            f"Features: **{', '.join(_fc)}** · expected outlier rate ≈ **{_anom.get('contamination', 0):.0%}**"
+        )
+        _show_n = st.slider("Rows to show (from pre-ranked top 500)", 10, 500, 50, key="anom_table_n")
+        _disp = _anom_df.head(_show_n).copy()
+        if "is_fraud" in _disp.columns:
+            _disp["is_fraud"] = _disp["is_fraud"].astype(str).replace({"0": "No", "1": "Yes"})
+        st.dataframe(_disp, use_container_width=True, hide_index=True)
+        _plot_df = _anom_df.head(min(400, len(_anom_df))).copy()
+        _iob = _plot_df["isolation_forest_outlier"].replace({"True": True, "False": False})
+        _plot_df["IF outlier"] = _iob.map({True: "Yes", False: "No"})
+        fig_an = px.scatter(
+            _plot_df,
+            x="amount",
+            y="anomaly_score",
+            color="IF outlier",
+            labels={"anomaly_score": "Anomaly score (higher = rarer in feature space)"},
+            color_discrete_map={"Yes": "#fb7185", "No": "#94a3b8"},
+        )
+        st.plotly_chart(
+            ui_theme.polish_fig(fig_an, x_title="Amount", y_title="Anomaly score"),
+            use_container_width=True,
+            config=_PLOT_CFG,
+        )
+    else:
+        st.info(
+            "No anomaly artifacts yet. Run **`python main.py`** or **Training / pipeline** → retrain "
+            "to write `output/transaction_anomalies_top500.csv` and refresh metrics."
+        )
 
 with tab_sent:
     st.subheader("Review sentiment")
@@ -436,6 +547,23 @@ with tab_basket:
                 )
             )
             st.plotly_chart(_fsc, use_container_width=True, config=_PLOT_CFG)
+
+with tab_report:
+    st.subheader("Detections & findings report")
+    with st.expander("What this tab shows", expanded=False):
+        st.markdown(explain.TAB_REPORT)
+    if not metrics:
+        st.warning("No metrics loaded — run the pipeline first.")
+    else:
+        _report_md = build_findings_report_markdown(metrics)
+        st.markdown(_report_md)
+        st.download_button(
+            label="Download report as Markdown",
+            data=_report_md.encode("utf-8"),
+            file_name="detections_and_findings_report.md",
+            mime="text/markdown",
+            help="For your write-up: open in any editor or paste into Google Docs / Word.",
+        )
 
 with tab_summary:
     st.subheader("Hadoop · Spark · business context")

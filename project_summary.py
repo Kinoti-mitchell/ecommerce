@@ -40,7 +40,9 @@ Role of Hadoop-era components vs Spark
   Structured Streaming — common successor to MapReduce for analytics and ML.
 
 This project simulates HDFS with the `data/` lake, MapReduce-style Python
-aggregations in `utils/mapreduce_helpers.py`, and optional PySpark in
-`spark_jobs/batch_processing.py`.
+aggregations in `utils/mapreduce_helpers.py`, optional PySpark in
+`spark_jobs/batch_processing.py`, supervised fraud scoring in `analytics/fraud.py`,
+and unsupervised transaction anomalies (Isolation Forest, no fraud label) in
+`analytics/anomalies.py`.
 ================================================================================
 """

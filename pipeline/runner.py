@@ -56,6 +56,12 @@ def run_full_pipeline() -> None:
     tx_feat["fraud_proba"] = fraud_proba(tx_clean)
     tx_feat.to_csv(config.OUTPUT_DIR / "fraud_scored_transactions.csv", index=False)
 
+    print("Step 2b: Unsupervised transaction anomalies (Isolation Forest, no fraud labels)...")
+    from analytics.anomalies import fit_transaction_anomalies, save_anomaly_outputs
+
+    anom_res = fit_transaction_anomalies(tx_clean)
+    save_anomaly_outputs(anom_res)
+
     print("Step 3: MapReduce-style fraud rollups (Python simulation)...")
     rollup = run_fraud_mapreduce(tx_clean, n_chunks=config.mapreduce_chunks())
     rollup.to_csv(config.OUTPUT_DIR / "fraud_user_rollups_mapreduce.csv", index=False)
@@ -180,6 +186,7 @@ def run_full_pipeline() -> None:
             "spark_summary_path": spark_out,
         },
         "mapreduce_rollup_users": len(rollup),
+        "transaction_anomalies": anom_res["summary"],
     }
     with open(config.OUTPUT_DIR / "metrics.json", "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2, default=str)
@@ -190,4 +197,10 @@ def run_full_pipeline() -> None:
     print("Churn ROC-AUC:", metrics["churn"]["roc_auc"])
     print("Sentiment accuracy (vs synthetic labels):", metrics["sentiment"].get("accuracy_vs_synthetic_labels"))
     print("Association rules mined:", metrics["market_basket"]["n_rules"])
+    print(
+        "Anomaly outliers (Isolation Forest):",
+        metrics["transaction_anomalies"]["n_flagged_outliers"],
+        "/",
+        metrics["transaction_anomalies"]["n_rows"],
+    )
     print(FINAL_SUMMARY_TEXT)
