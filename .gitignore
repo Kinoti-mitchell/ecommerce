@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Project: regenerate with `python main.py`
+output/*
+!output/.gitkeep
+data/*
+!data/.gitkeep
+
+# Trained matrices and pickles (large; regenerate via main.py)
+models/*
+!models/.gitkeep
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Local env / secrets
+.env
+.env.local
