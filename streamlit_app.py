@@ -25,9 +25,9 @@ import config
 
 from analytics.fraud import engineer_fraud_features, load_fraud_artifacts
 from analytics.recommendations import recommend_for_user
-from dashboard import explanations as explain
-from dashboard import ui as ui_theme
-from dashboard.loaders import (
+from ecom_dashboard import explanations as explain
+from ecom_dashboard import ui as ui_theme
+from ecom_dashboard.loaders import (
     load_churn_scores,
     load_metrics,
     load_reviews_sample,
